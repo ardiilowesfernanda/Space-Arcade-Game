@@ -138,7 +138,6 @@ class Enemy(Player):
             enemybullet_group.add(enemybullet)
             sprite_group.add(enemybullet)
  
- 
 class Ufo(Enemy):
     def __init__(self, img):
         super().__init__(img)
@@ -217,8 +216,63 @@ class Game:
         self.count_hit2 = 0 
         self.lives = 3
         self.score = 0
+        self.init_create = True
  
-        self.run_game()
+        self.start_screen()
+    
+    def start_text(self):
+        font = pygame.font.SysFont('Calibri', 50)
+        text = font.render('SPACE WAR NICH', True, 'blue')
+        text_rect = text.get_rect(center=(s_width/2, s_height/2))
+        screen.blit(text, text_rect)
+        
+        font2 = pygame.font.SysFont('Calibri', 30)
+        text2 = font2.render('KELOMPOK 4 GRAFKOM', True, 'white')
+        text2_rect = text2.get_rect(center=(s_width/2, s_height/2+60))
+        screen.blit(text2, text2_rect)
+        
+    def start_screen(self):
+        while True:
+            screen.fill('black')
+            self.start_text()
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
+                    if event.key == K_RETURN:
+                        self.run_game()
+                        
+            pygame.display.update()
+            
+    def pause_text(self):
+        font = pygame.font.SysFont('Calibri', 50)
+        text = font.render('PAUSED', True, 'white')
+        text_rect = text.get_rect(center=(s_width/2, s_height/2))
+        screen.blit(text, text_rect)
+            
+    def pause_screen(self):
+        self.init_create = False
+        while True:
+            self.pause_text() # FIX: Tambahkan () untuk memanggil fungsi
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        pygame.quit()
+                        sys.exit()
+                    # FIX: Ubah ke K_p atau tombol lain agar bisa kembali main
+                    if event.key == K_p: 
+                        return # Keluar dari loop pause dan kembali ke game
+                        
+            pygame.display.update() # Pastikan layar diupdate saat pause
  
     def create_background(self):
         for i in range(20):
@@ -348,11 +402,12 @@ class Game:
         sprite_group.update()
  
     def run_game(self):
-        self.create_background()
-        self.create_particles()
-        self.create_player()
-        self.create_enemy()
-        self.create_ufo()
+        if self.init_create:
+            self.create_background()
+            self.create_particles()
+            self.create_player()
+            self.create_enemy()
+            self.create_ufo()
         while True:
             screen.fill('black')
             self.playerbullet_hits_enemy()
@@ -370,13 +425,20 @@ class Game:
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
- 
+
                 if event.type == KEYDOWN:
-                    self.player.shoot()
+                    # Menembak tetap menggunakan tombol keyboard apa saja (sesuai kode awal)
+                    # Namun jika ingin spesifik menembak, biasanya ditaruh di sini
+                    self.player.shoot() 
+
                     if event.key == K_ESCAPE:
                         pygame.quit()
                         sys.exit()
- 
+                    
+                    # FIX: Ubah tombol Pause menjadi 'P' agar tidak bentrok dengan menembak
+                    if event.key == K_p: 
+                        self.pause_screen()
+
             pygame.display.update()
             clock.tick(FPS)
  
