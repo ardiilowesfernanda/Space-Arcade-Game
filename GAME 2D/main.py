@@ -47,6 +47,8 @@ enemybullet_group = pygame.sprite.Group()
 ufobullet_group = pygame.sprite.Group()
 explosion_group = pygame.sprite.Group()
 particle_group = pygame.sprite.Group()
+# Group tambahan untuk kembang api
+victory_particle_group = pygame.sprite.Group()
  
 sprite_group = pygame.sprite.Group()
  
@@ -81,7 +83,23 @@ class Particle(Background):
         if self.rect.y > s_height:
             self.rect.x = random.randrange(0, s_width)
             self.rect.y = random.randrange(0, s_height)
+
+# --- CLASS BARU UNTUK EFEK VICTORY ---
+class VictoryFirework(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.Surface([5, 5])
+        self.color = random.choice(['red', 'gold', 'white', 'blue', 'green'])
+        self.image.fill(self.color)
+        self.rect = self.image.get_rect(center=(random.randint(0, s_width), s_height + 10))
+        self.vel_y = random.randint(-15, -5)
+        self.vel_x = random.randint(-3, 3)
  
+    def update(self):
+        self.rect.y += self.vel_y
+        self.rect.x += self.vel_x
+        if self.rect.y < -10:
+            self.kill()
  
  
 class Player(pygame.sprite.Sprite):
@@ -149,13 +167,12 @@ class Enemy(Player):
         self.shoot()
  
     def shoot(self):
-        if self.rect.y in (0, 300, 700):
+        if self.rect.y in (0, 40, 70, 300, 700):
             enemybullet = EnemyBullet(enemy_bullet)
             enemybullet.rect.x = self.rect.x + 20
             enemybullet.rect.y = self.rect.y + 50
             enemybullet_group.add(enemybullet)
             sprite_group.add(enemybullet)
- 
  
 class Ufo(Enemy):
     def __init__(self, img):
@@ -238,6 +255,10 @@ class Game:
         self.score = 0
         self.init_create = True
         self.game_over_sound_delay = 0
+        
+        # --- VARIABEL UNTUK SCORE BERDENYUT ---
+        self.score_scale = 1.0
+        self.scale_speed = 0.01 
  
         self.start_screen()
  
@@ -256,6 +277,7 @@ class Game:
         pygame.mixer.Sound.stop(game_over_music)
         pygame.mixer.Sound.play(start_screen_music)
         self.lives = 3 
+        self.score = 0
         sprite_group.empty()
         while True: 
             screen.fill('black')
@@ -294,7 +316,6 @@ class Game:
                     if event.key == K_ESCAPE:
                         pygame.quit()
                         sys.exit()
-                    # Menekan P lagi untuk kembali ke permainan
                     if event.key == K_p:
                         return 
  
@@ -327,6 +348,44 @@ class Game:
                         self.start_screen()
  
             pygame.display.update()
+
+    # --- FUNGSI VICTORY BARU ---
+    def victory_text(self):
+        font = pygame.font.SysFont('Calibri', 60, bold=True)
+        text = font.render('VICTORY!', True, 'gold')
+        text_rect = text.get_rect(center=(s_width/2, s_height/2))
+        screen.blit(text, text_rect)
+
+        font2 = pygame.font.SysFont('Calibri', 30)
+        text2 = font2.render('GG GAMING BANG', True, 'white')
+        text2_rect = text2.get_rect(center=(s_width/2, s_height/2 + 70))
+        screen.blit(text2, text2_rect)
+
+    def victory_screen(self):
+        pygame.mixer.music.stop()
+        victory_particle_group.empty()
+        while True:
+            screen.fill('black')
+            
+            # Buat partikel kembang api terus menerus
+            if len(victory_particle_group) < 50:
+                victory_particle_group.add(VictoryFirework())
+            
+            victory_particle_group.update()
+            victory_particle_group.draw(screen)
+            
+            self.victory_text()
+            
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        self.start_screen()
+            
+            pygame.display.update()
+            clock.tick(FPS)
  
  
     def create_background(self):
@@ -379,12 +438,16 @@ class Game:
                 i.rect.y = random.randrange(-3000, -100)
                 self.count_hit = 0
                 pygame.mixer.Sound.play(explosion_sound)
+                
+                # CEK SKOR KEMENANGAN
+                if self.score >= 150:
+                    self.victory_screen()
  
     def playerbullet_hits_ufo(self):
         hits = pygame.sprite.groupcollide(ufo_group, playerbullet_group, False, True)
         for i in hits:
             self.count_hit2 += 1
-            if self.count_hit2 == 40:
+            if self.count_hit2 == 20:
                 self.score += 50
                 expl_x = i.rect.x + 50
                 expl_y = i.rect.y + 60
@@ -394,6 +457,10 @@ class Game:
                 i.rect.x = -199
                 self.count_hit2 = 0
                 pygame.mixer.Sound.play(explosion_sound)
+
+                # CEK SKOR KEMENANGAN
+                if self.score >= 150:
+                    self.victory_screen()
  
     def enemybullet_hits_player(self):
         if self.player.image.get_alpha() == 255:
@@ -445,12 +512,21 @@ class Game:
             screen.blit(self.live_img, (0+n, s_height-710))
             n += 60
  
+    # --- FUNGSI SCORE BERDENYUT ---
     def create_score(self):
-        score = self.score 
+        self.score_scale += self.scale_speed
+        if self.score_scale > 1.3 or self.score_scale < 0.9:
+            self.scale_speed *= -1
+            
         font = pygame.font.SysFont('Calibri', 30)
-        text = font.render("Score: "+str(score), True, 'green')
-        text_rect = text.get_rect(center=(s_width-150, s_height-850))
-        screen.blit(text, text_rect)
+        score_surf = font.render("Score: "+str(self.score), True, 'green')
+        
+        orig_size = score_surf.get_size()
+        new_size = (int(orig_size[0] * self.score_scale), int(orig_size[1] * self.score_scale))
+        scaled_score = pygame.transform.scale(score_surf, new_size)
+        
+        text_rect = scaled_score.get_rect(center=(s_width-150, s_height-700))
+        screen.blit(scaled_score, text_rect)
  
  
     def run_update(self):
@@ -486,15 +562,13 @@ class Game:
                     sys.exit()
  
                 if event.type == KEYDOWN:
-                    # Menembak menggunakan SPASI
                     if event.key == K_SPACE:
                         pygame.mixer.Sound.play(laser_sound)
                         self.player.shoot()
-
-                    # Pause menggunakan P
+ 
                     if event.key == K_p:
                         self.pause_screen()
-
+ 
                     if event.key == K_ESCAPE:
                         pygame.quit()
                         sys.exit()
