@@ -17,6 +17,21 @@ enemy_bullet = 'enemybullet.png'
 ufo_bullet = 'enemybullet.png'
  
  
+''' SOUND '''
+ 
+laser_sound = pygame.mixer.Sound('laser.wav')
+explosion_sound = pygame.mixer.Sound('low_expl.wav')
+go_sound = pygame.mixer.Sound('go.wav')
+game_over_sound = pygame.mixer.Sound('game_over.wav')
+start_screen_music = pygame.mixer.Sound('cyberfunk.mp3')
+game_over_music = pygame.mixer.Sound('illusoryrealm.mp3')
+ 
+background_music = pygame.mixer.music.load('epicsong.mp3')
+ 
+pygame.mixer.init()
+ 
+ 
+ 
 screen = pygame.display.set_mode((0,0), FULLSCREEN)
 s_width, s_height = screen.get_size()
  
@@ -59,14 +74,16 @@ class Particle(Background):
         self.rect.x = random.randrange(0, s_width)
         self.rect.y = random.randrange(0, s_height)
         self.image.fill('grey')
-        self.vel = random.randint(3, 8)
-        
+        self.vel = random.randint(3,8)
+ 
     def update(self):
-        self.rect.y += self.vel
+        self.rect.y += self.vel 
         if self.rect.y > s_height:
             self.rect.x = random.randrange(0, s_width)
             self.rect.y = random.randrange(0, s_height)
-            
+ 
+ 
+ 
 class Player(pygame.sprite.Sprite):
     def __init__(self, img):
         super().__init__()
@@ -112,6 +129,7 @@ class Player(pygame.sprite.Sprite):
             sprite_group.add(bullet)
  
     def dead(self):
+        pygame.mixer.Sound.play(explosion_sound)
         self.alive = False
         self.activate_bullet = False
  
@@ -119,24 +137,25 @@ class Player(pygame.sprite.Sprite):
 class Enemy(Player):
     def __init__(self, img):
         super().__init__(img)
-        self.rect.x = random.randrange(50, s_width-50)
+        self.rect.x = random.randrange(80, s_width-80)
         self.rect.y = random.randrange(-500, 0)
         screen.blit(self.image, (self.rect.x, self.rect.y))
  
     def update(self):
         self.rect.y += 1
         if self.rect.y > s_height:
-            self.rect.x = random.randrange(50, s_width-50)
+            self.rect.x = random.randrange(80, s_width-50)
             self.rect.y = random.randrange(-2000, 0)
         self.shoot()
  
     def shoot(self):
-        if self.rect.y in (0, 30, 70, 300, 700):
+        if self.rect.y in (0, 300, 700):
             enemybullet = EnemyBullet(enemy_bullet)
             enemybullet.rect.x = self.rect.x + 20
             enemybullet.rect.y = self.rect.y + 50
             enemybullet_group.add(enemybullet)
             sprite_group.add(enemybullet)
+ 
  
 class Ufo(Enemy):
     def __init__(self, img):
@@ -170,9 +189,10 @@ class PlayerBullet(pygame.sprite.Sprite):
         self.image.set_colorkey('black')
  
     def update(self):
-        self.rect.y -= 10
+        self.rect.y -= 18
         if self.rect.y < 0:
             self.kill()
+ 
  
 class EnemyBullet(PlayerBullet):
     def __init__(self, img):
@@ -217,62 +237,97 @@ class Game:
         self.lives = 3
         self.score = 0
         self.init_create = True
+        self.game_over_sound_delay = 0
  
         self.start_screen()
-    
+ 
     def start_text(self):
         font = pygame.font.SysFont('Calibri', 50)
         text = font.render('SPACE WAR NICH', True, 'blue')
         text_rect = text.get_rect(center=(s_width/2, s_height/2))
         screen.blit(text, text_rect)
-        
+ 
         font2 = pygame.font.SysFont('Calibri', 30)
         text2 = font2.render('KELOMPOK 4 GRAFKOM', True, 'white')
         text2_rect = text2.get_rect(center=(s_width/2, s_height/2+60))
         screen.blit(text2, text2_rect)
-        
+ 
     def start_screen(self):
-        while True:
+        pygame.mixer.Sound.stop(game_over_music)
+        pygame.mixer.Sound.play(start_screen_music)
+        self.lives = 3 
+        sprite_group.empty()
+        while True: 
             screen.fill('black')
             self.start_text()
             for event in pygame.event.get():
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
-                
+ 
                 if event.type == KEYDOWN:
                     if event.key == K_ESCAPE:
                         pygame.quit()
                         sys.exit()
                     if event.key == K_RETURN:
                         self.run_game()
-                        
+ 
             pygame.display.update()
-            
+ 
     def pause_text(self):
         font = pygame.font.SysFont('Calibri', 50)
         text = font.render('PAUSED', True, 'white')
         text_rect = text.get_rect(center=(s_width/2, s_height/2))
         screen.blit(text, text_rect)
-            
+ 
+ 
     def pause_screen(self):
         self.init_create = False
-        while True:
-            self.pause_text() # FIX: Tambahkan () untuk memanggil fungsi
+        while True: 
+            self.pause_text()
             for event in pygame.event.get():
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
-                
+ 
                 if event.type == KEYDOWN:
                     if event.key == K_ESCAPE:
                         pygame.quit()
                         sys.exit()
-                    # FIX: Ubah ke K_p atau tombol lain agar bisa kembali main
-                    if event.key == K_p: 
-                        return # Keluar dari loop pause dan kembali ke game
-                        
-            pygame.display.update() # Pastikan layar diupdate saat pause
+                    # Menekan P lagi untuk kembali ke permainan
+                    if event.key == K_p:
+                        return 
+ 
+            pygame.display.update()
+ 
+ 
+    def game_over_text(self):
+        font = pygame.font.SysFont('Calibri', 50)
+        text = font.render('GAME OVER DEK DEK', True, 'red')
+        text_rect = text.get_rect(center=(s_width/2, s_height/2))
+        screen.blit(text, text_rect)
+ 
+    def game_over_screen(self):
+        pygame.mixer.music.stop()
+        pygame.mixer.Sound.play(game_over_sound)
+        while True: 
+            screen.fill('black')
+            self.game_over_text()
+            self.game_over_sound_delay += 1
+            if self.game_over_sound_delay > 1400:
+                pygame.mixer.Sound.play(game_over_music)
+ 
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+ 
+                if event.type == KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        self.start_screen()
+ 
+            pygame.display.update()
+ 
  
     def create_background(self):
         for i in range(20):
@@ -282,14 +337,15 @@ class Game:
             background_image.rect.y = random.randrange(0, s_height)
             background_group.add(background_image)
             sprite_group.add(background_image)
-    
+ 
     def create_particles(self):
-        for i in range(150):
-            x = 1
-            y = random.randint(1, 7)
+        for i in range(70):
+            x = 1 
+            y = random.randint(1,7)
             particle = Particle(x, y)
             particle_group.add(particle)
             sprite_group.add(particle)
+ 
  
     def create_player(self):
         self.player = Player(player_ship)
@@ -322,13 +378,14 @@ class Game:
                 i.rect.x = random.randrange(0, s_width)
                 i.rect.y = random.randrange(-3000, -100)
                 self.count_hit = 0
+                pygame.mixer.Sound.play(explosion_sound)
  
     def playerbullet_hits_ufo(self):
         hits = pygame.sprite.groupcollide(ufo_group, playerbullet_group, False, True)
         for i in hits:
             self.count_hit2 += 1
             if self.count_hit2 == 40:
-                self.score += 40
+                self.score += 50
                 expl_x = i.rect.x + 50
                 expl_y = i.rect.y + 60
                 explosion = Explosion(expl_x, expl_y)
@@ -336,6 +393,7 @@ class Game:
                 sprite_group.add(explosion)
                 i.rect.x = -199
                 self.count_hit2 = 0
+                pygame.mixer.Sound.play(explosion_sound)
  
     def enemybullet_hits_player(self):
         if self.player.image.get_alpha() == 255:
@@ -344,8 +402,8 @@ class Game:
                 self.lives -= 1
                 self.player.dead()
                 if self.lives < 0:
-                    pygame.quit()
-                    sys.exit()
+                    self.game_over_screen()
+ 
  
     def ufobullet_hits_player(self):
         if self.player.image.get_alpha() == 255:
@@ -354,8 +412,7 @@ class Game:
                 self.lives -= 1
                 self.player.dead()
                 if self.lives < 0:
-                    pygame.quit()
-                    sys.exit()
+                    self.game_over_screen()
  
     def player_enemy_crash(self):
         if self.player.image.get_alpha() == 255:
@@ -367,8 +424,7 @@ class Game:
                     self.lives -= 1
                     self.player.dead()
                     if self.lives < 0:
-                        pygame.quit()
-                        sys.exit()
+                        self.game_over_screen()
  
     def player_ufo_crash(self):
         if self.player.image.get_alpha() == 255:
@@ -379,29 +435,32 @@ class Game:
                     self.lives -= 1
                     self.player.dead()
                     if self.lives < 0:
-                        pygame.quit()
-                        sys.exit()
+                        self.game_over_screen()
  
     def create_lives(self):
         self.live_img = pygame.image.load(player_ship)
-        self.live_img = pygame.transform.scale(self.live_img, (30,30))
+        self.live_img = pygame.transform.scale(self.live_img, (20,23))
         n = 0
         for i in range(self.lives):
-            screen.blit(self.live_img, (0+n, s_height-720))
-            n += 80
-            
+            screen.blit(self.live_img, (0+n, s_height-710))
+            n += 60
+ 
     def create_score(self):
-        score = self.score
+        score = self.score 
         font = pygame.font.SysFont('Calibri', 30)
-        text = font.render(str(score), True, 'green')
-        text_rect = text.get_rect(center=(s_width-150, s_height-700))
+        text = font.render("Score: "+str(score), True, 'green')
+        text_rect = text.get_rect(center=(s_width-150, s_height-850))
         screen.blit(text, text_rect)
+ 
  
     def run_update(self):
         sprite_group.draw(screen)
         sprite_group.update()
  
     def run_game(self):
+        pygame.mixer.Sound.stop(start_screen_music)
+        pygame.mixer.Sound.play(go_sound)
+        pygame.mixer.music.play(-1)
         if self.init_create:
             self.create_background()
             self.create_particles()
@@ -417,28 +476,29 @@ class Game:
             self.player_enemy_crash()
             self.player_ufo_crash()
             self.run_update()
-            pygame.draw.rect(screen, 'black', (0, 0, s_width, 30))
+            pygame.draw.rect(screen, 'black', (0,0,s_width,30))
             self.create_lives()
             self.create_score()
-            
+ 
             for event in pygame.event.get():
                 if event.type == QUIT:
                     pygame.quit()
                     sys.exit()
-
+ 
                 if event.type == KEYDOWN:
-                    # Menembak tetap menggunakan tombol keyboard apa saja (sesuai kode awal)
-                    # Namun jika ingin spesifik menembak, biasanya ditaruh di sini
-                    self.player.shoot() 
+                    # Menembak menggunakan SPASI
+                    if event.key == K_SPACE:
+                        pygame.mixer.Sound.play(laser_sound)
+                        self.player.shoot()
+
+                    # Pause menggunakan P
+                    if event.key == K_p:
+                        self.pause_screen()
 
                     if event.key == K_ESCAPE:
                         pygame.quit()
                         sys.exit()
-                    
-                    # FIX: Ubah tombol Pause menjadi 'P' agar tidak bentrok dengan menembak
-                    if event.key == K_p: 
-                        self.pause_screen()
-
+ 
             pygame.display.update()
             clock.tick(FPS)
  
